@@ -100,7 +100,6 @@ public class User implements UserDetails {
             return List.of();
         }
         String authorityString = "ROLE_" + role.name();
-        System.out.println("DEBUG: User role is " + role.name() + ", returning authority: " + authorityString);
         return List.of(new SimpleGrantedAuthority(authorityString));
     }
 

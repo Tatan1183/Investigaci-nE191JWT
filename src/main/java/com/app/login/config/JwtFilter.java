@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
-
 public class JwtFilter extends OncePerRequestFilter {
 
     private final UserDetailsService userDetailsService;
@@ -35,24 +34,47 @@ public class JwtFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
-        if (authHeader == null || !authHeader.startsWith("Bearer")) {
+
+        System.out.println("JwtFilter: Request URL: " + request.getRequestURI()); // Log URL
+        System.out.println("JwtFilter: Authorization Header: " + authHeader); // Log Header
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("JwtFilter: No Bearer token found, skipping filter.");
             filterChain.doFilter(request, response);
             return;
         }
+
         jwt = authHeader.substring(7);
-        userEmail = jwtService.getUserName(jwt);
+        System.out.println("JwtFilter: Extracted JWT: " + jwt);
+
+        try {
+            userEmail = jwtService.getUserName(jwt);
+            System.out.println("JwtFilter: Extracted UserEmail: " + userEmail);
+        } catch (Exception e) {
+            System.err.println("JwtFilter: Error extracting username from token: " + e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            System.out.println("JwtFilter: UserDetails loaded for: " + userDetails.getUsername());
+
             if (jwtService.validateToken(jwt, userDetails)) {
+                System.out.println("JwtFilter: Token is valid.");
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
+                        null, // No credentials needed here
                         userDetails.getAuthorities()
                 );
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                System.out.println("JwtFilter: Authentication set in SecurityContext.");
+            } else {
+                System.out.println("JwtFilter: Token is invalid.");
             }
         }
+
         filterChain.doFilter(request, response);
     }
-
 }
